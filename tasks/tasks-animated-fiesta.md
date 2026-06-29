@@ -1,0 +1,131 @@
+# Tasks: Animated Fiesta
+
+> Generated from [PRD: Animated Fiesta](prd-animated-fiesta.md)
+
+## Acceptance Criteria Traceability
+
+| AC    | Criterion (short)                                   | Tasks         |
+|-------|-----------------------------------------------------|---------------|
+| AC-1  | Build & run (`make dev`/`build`, no console errors) | 1.0           |
+| AC-2  | First-person navigation (pointer-lock, WASD, bounds)| 2.0           |
+| AC-3  | Confetti cannon (≥150 particles, gravity, recycled) | 3.0           |
+| AC-4  | Color/joy restoration (recolor, bounce, +meter)     | 4.0           |
+| AC-5  | Fiesta Meter + portal gating (inactive→active@100%) | 4.0, 5.0      |
+| AC-6  | Portals + 3 distinct worlds in order                | 5.0           |
+| AC-7  | Boss finale + win + restart                         | 6.0           |
+| AC-8  | Intro/orientation + satire tone                     | 7.0           |
+| AC-9  | System status & feedback (world/objective/aim cue)  | 7.0           |
+| AC-10 | Robustness (~2-min no-error session, resize)        | 8.0           |
+
+## Relevant Files
+
+(Greenfield repo — these are new files this feature creates. Confirmed no pre-existing
+source, Makefile, or tests by reading the repo root.)
+
+- `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html` — scaffold + UI host
+- `Makefile` — canonical command surface (rule 07)
+- `.gitignore` — extend with `node_modules/`, `dist/`
+- `src/main.ts` — entry, render loop, game state machine
+- `src/state.ts` — shared game state + types
+- `src/player.ts` — first-person controller
+- `src/confetti.ts` — confetti particle system + cannon
+- `src/grump.ts` — grumpy-object abstraction
+- `src/portal.ts` — disco-ball portal
+- `src/worlds/types.ts`, `src/worlds/office.ts`, `src/worlds/cavern.ts`, `src/worlds/rooftop.ts` — world builders
+- `src/boss.ts` — Grey Auditor boss
+- `src/ui.ts` — HUD/intro/win overlay
+- `src/audio.ts` — optional Web Audio polish
+
+### Notes
+- No test runner. Validation = `make build` (tsc + vite build) exit 0, `make check` (`tsc --noEmit`) exit 0, and Chrome browser-automation load/console-error + behavioral checks (screenshots). Gameplay "feel" flagged for human verification.
+- Run dev: `make dev`. Build: `make build`. Type-check: `make check`.
+
+---
+
+## Tasks
+
+- [x] **1.0 Project scaffold & command surface**                      <- Serves: AC-1
+  - [x] 1.1 `package.json` with `three`, `vite`, `typescript`, `@types/three`; scripts dev/build/preview/check
+  - [x] 1.2 `vite.config.ts`, `tsconfig.json` (strict), `index.html` with canvas + UI overlay root
+  - [x] 1.3 `Makefile` (`help`, `install`, `dev`, `build`, `preview`, `check`, `clean`) + `.gitignore` (`node_modules/`, `dist/`)
+  - [x] 1.4 Minimal `src/main.ts` that mounts a Three.js renderer + spinning placeholder so the pipeline is provably wired
+  - **Validates when:**
+    - `make install` exits 0 (deps installed)
+    - `make check` (`tsc --noEmit`) exits 0
+    - `make build` exits 0 and produces `dist/index.html` + bundled JS
+    - Chrome loads dev/preview URL: canvas present, **no uncaught console errors**
+
+  **Validation Results (1.0):**
+
+  | # | Check | Result | Notes |
+  |---|-------|--------|-------|
+  | 1 | `make install` exits 0 | PASS | 22 packages, 0 vulnerabilities |
+  | 2 | `make check` (`tsc --noEmit`) exits 0 | PASS | exit 0 |
+  | 3 | `make build` exits 0 + dist produced | PASS | `dist/index.html` + bundled JS (467 kB) |
+  | 4 | Chrome loads, canvas present | PASS | canvas 2560×1323, `#ui-root` present, title correct |
+  | 5 | No uncaught **app** console errors | PASS | only error is from an unrelated Chrome extension (`chrome-extension://…/content.js`), not app code |
+
+- [ ] **2.0 First-person player controller**                          <- Serves: AC-2
+  - [ ] 2.1 `src/player.ts`: PointerLockControls, click-to-lock, WASD velocity integration
+  - [ ] 2.2 Mouse-look via controls; ground-plane movement; head-bob on move
+  - [ ] 2.3 World bounds clamp + fixed eye height (no fall-through)
+  - **Validates when:**
+    - `make check` exits 0
+    - Chrome: clicking canvas locks pointer (screenshot shows lock / instructions hidden)
+    - Pressing W changes camera Z position (verified via injected debug readout / console)
+    - Camera Y stays at eye height; X/Z clamped within bounds (no NaN, no escape)
+
+- [ ] **3.0 Confetti cannon & particle system**                       <- Serves: AC-3
+  - [ ] 3.1 `src/confetti.ts`: pooled particle system (BufferGeometry positions+colors), gravity, lifetime, recycle
+  - [ ] 3.2 Crosshair element; mouse-click fires a burst of ≥150 multicolored particles from the view
+  - [ ] 3.3 Cap pool size; dead particles recycled (no unbounded growth)
+  - **Validates when:**
+    - `make check` exits 0
+    - Chrome: clicking spawns visible confetti (screenshot before/after)
+    - Debug readout: active particle count rises on fire, returns toward baseline after lifetimes (no monotonic leak across 10 fires)
+
+- [ ] **4.0 Grump + joy restoration + Fiesta Meter**                   <- Serves: AC-4, AC-5
+  - [ ] 4.1 `src/grump.ts`: object with desaturated + target color; `cheer()` tweens color, bounce/pop, emits confetti, marks cheered
+  - [ ] 4.2 Fire raycast from camera; nearest un-cheered grump within range gets cheered on click
+  - [ ] 4.3 Fiesta Meter state + HUD bar in `src/ui.ts`; increments once per grump (no double-count); reaches 100% when all cheered
+  - **Validates when:**
+    - `make check` exits 0
+    - Chrome: aiming at a grump + firing recolors it + bounces (screenshot before/after)
+    - Debug: meter increments on first cheer of a grump, does NOT change on re-firing same grump
+    - Meter reaches 100% after cheering all grumps in a test world
+
+- [ ] **5.0 Portals & world manager (3 worlds)**                       <- Serves: AC-5, AC-6
+  - [ ] 5.1 `src/portal.ts`: disco-ball portal, inactive (dim/still) vs active (glowing/spinning) states; activates at meter 100%
+  - [ ] 5.2 World manager in `src/main.ts`: build/teardown scene graph; proximity check enters active portal → next world
+  - [ ] 5.3 `src/worlds/office.ts`, `cavern.ts`, `rooftop.ts` (+ `types.ts`): 3 visually distinct worlds with grumps + portal
+  - **Validates when:**
+    - `make check` exits 0
+    - Chrome: portal is visibly inactive until meter 100%, then visibly active (screenshots)
+    - Walking into inactive portal does nothing; walking into active portal swaps to next world (screenshots of all 3 worlds, visually distinct)
+
+- [ ] **6.0 Boss finale & win/restart**                                <- Serves: AC-7
+  - [ ] 6.1 `src/boss.ts`: Grey Auditor figure with joy/resistance bar that fills as confetti hits him
+  - [ ] 6.2 At 100% joy: win sequence (confetti celebration) + transition to win screen
+  - [ ] 6.3 Win screen in `src/ui.ts` with restart → returns to intro/world 1
+  - **Validates when:**
+    - `make check` exits 0
+    - Chrome: firing at Auditor raises his joy bar; at 100% the win screen appears (screenshots)
+    - Restart button returns to intro and a new run is playable
+
+- [ ] **7.0 UX shell & tone**                                          <- Serves: AC-8, AC-9
+  - [ ] 7.1 Intro screen: premise (Grey Auditor / last Fiesta Director) + controls; "click to begin"
+  - [ ] 7.2 HUD: current world name + active objective/hint always visible during play
+  - [ ] 7.3 Aim feedback: crosshair changes/highlights when aimed at a cheerable grump; satire copy in ≥1 in-world touch
+  - **Validates when:**
+    - `make check` exits 0
+    - Chrome: intro screen shows premise + controls before play (screenshot)
+    - During play, world name + objective visible (screenshot); crosshair changes state when aimed at a grump vs not (screenshots)
+
+- [ ] **8.0 Robustness & polish**                                      <- Serves: AC-10
+  - [ ] 8.1 Window-resize handler keeps canvas/camera aspect correct
+  - [ ] 8.2 ~2-minute Chrome session: assert no uncaught console errors, stays interactive
+  - [ ] 8.3 Perf pass (instancing/pool caps where needed); optional audio polish (`src/audio.ts`, non-blocking)
+  - **Validates when:**
+    - `make build` exits 0
+    - Chrome: resize window → canvas resizes without distortion (screenshots at 2 sizes)
+    - ~2-min session scan: console-error count == 0; page still responds to input at end
