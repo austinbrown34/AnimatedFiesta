@@ -6,9 +6,11 @@ without per-task pause; stop and report on any failure.)
 
 ## Current Position
 - Phase: 3 (Validation-First Implementation)
-- Active task: 5.0 (Portals & world manager — 3 worlds)
-- Completed parent tasks: 1.0 (scaffold), 2.0 (controller), 3.0 (confetti), 4.0 (grumps + meter)
-- Core loop proven: aim → fire → cheer grump (recolor/bounce/face-flip) → meter → 100%.
+- Active task: 6.0 (Boss finale & win/restart)
+- Completed parent tasks: 1.0–5.0 (scaffold, controller, confetti, grumps+meter, portals+3 worlds)
+- Core loop proven end-to-end across all 3 worlds via portals.
+- main.ts is now a `Game` class (world manager). Worlds in src/worlds/{office,cavern,rooftop}.ts via `World` interface (types.ts). Portal in portal.ts.
+- Rooftop (world 3) has `portal: null` — victory comes from the boss (task 6).
 - Branch: `ab/f/animated-fiesta`
 - Dev server: `npm run dev` on **:5191** (background id bs6p5bonj)
 
@@ -17,6 +19,10 @@ without per-task pause; stop and report on any failure.)
 
 ## Human-Verify Ledger (env-limited checks for Phase 4 human gate)
 - [ ] (2.0) Click canvas engages pointer-lock + mouse-look — Pointer Lock API needs real user gesture; confirmed wired in code. Verify with one real click in-browser.
+- [ ] (5.0) Walking into an active portal during normal (foreground) play triggers traversal — logic unit-verified + traversal code path exercised; rAF was throttled in the hidden automation tab. Low risk.
+
+## Known Minor Polish (for task 7/8)
+- Grump faces use a fixed yaw toward arena center; from some angles you see their back. Consider billboarding the face toward the camera (task 7/8).
 
 ## Human Decisions (expensive to lose)
 - Stack: **Vite + Three.js + TypeScript**, plain ES modules.

@@ -9,6 +9,8 @@ function hex(n: number): string {
 export class UI {
   private readonly meterFill: HTMLElement;
   private readonly meterPct: HTMLElement;
+  private readonly worldName: HTMLElement;
+  private readonly worldObjective: HTMLElement;
 
   constructor(private readonly root: HTMLElement) {
     const meter = document.createElement("div");
@@ -32,6 +34,19 @@ export class UI {
 
     this.meterFill = meter.querySelector("[data-fill]") as HTMLElement;
     this.meterPct = meter.querySelector("[data-pct]") as HTMLElement;
+
+    // World name + objective banner, just under the meter.
+    const banner = document.createElement("div");
+    banner.style.cssText = `
+      position:absolute; top:52px; left:50%; transform:translateX(-50%);
+      text-align:center; text-shadow:0 2px 6px rgba(0,0,0,0.7);`;
+    banner.innerHTML = `
+      <div data-world style="font-size:22px; font-weight:bold; letter-spacing:1px;
+           color:${hex(PALETTE.yellow)}"></div>
+      <div data-objective style="font-size:14px; opacity:0.9; margin-top:2px"></div>`;
+    this.root.appendChild(banner);
+    this.worldName = banner.querySelector("[data-world]") as HTMLElement;
+    this.worldObjective = banner.querySelector("[data-objective]") as HTMLElement;
   }
 
   /** frac is 0..1 for the current world. */
@@ -39,5 +54,15 @@ export class UI {
     const pct = Math.round(frac * 100);
     this.meterFill.style.width = `${pct}%`;
     this.meterPct.textContent = `${pct}%`;
+  }
+
+  setWorld(name: string, objective: string): void {
+    this.worldName.textContent = name;
+    this.worldObjective.textContent = objective;
+  }
+
+  /** When the portal opens, nudge the objective text. */
+  setObjective(text: string): void {
+    this.worldObjective.textContent = text;
   }
 }

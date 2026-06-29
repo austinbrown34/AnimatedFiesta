@@ -3,210 +3,249 @@ import { Player } from "./player";
 import { ConfettiSystem } from "./confetti";
 import { Grump } from "./grump";
 import { UI } from "./ui";
-import { CONFETTI_COLORS, GameState, PALETTE } from "./state";
+import { GameState, PALETTE } from "./state";
+import { World } from "./worlds/types";
+import { buildOffice } from "./worlds/office";
+import { buildCavern } from "./worlds/cavern";
+import { buildRooftop } from "./worlds/rooftop";
 
 // ---------------------------------------------------------------------------
-// Animated Fiesta — main (task 2.0)
-// Renderer + scene + first-person Player in a temporary "calibration room".
-// World/portal/confetti systems arrive in later tasks.
+// Animated Fiesta — main (task 5.0)
+// World manager: loads each world, swaps scene graphs on portal traversal, and
+// runs the core loop (move, fire, cheer, fill meter, open portal, travel).
 // ---------------------------------------------------------------------------
+
+const WORLD_BUILDERS: Array<() => World> = [buildOffice, buildCavern, buildRooftop];
 
 const app = document.getElementById("app");
 const uiRoot = document.getElementById("ui-root");
 if (!app || !uiRoot) throw new Error("mount points not found");
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-app.appendChild(renderer.domElement);
+class Game {
+  readonly scene = new THREE.Scene();
+  readonly renderer = new THREE.WebGLRenderer({ antialias: true });
+  readonly camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 600);
+  readonly player: Player;
+  readonly confetti = new ConfettiSystem();
+  readonly ui: UI;
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x14141a);
-scene.fog = new THREE.Fog(0x14141a, 20, 70);
+  state = GameState.Playing;
+  world!: World;
+  index = 0;
+  cheered = 0;
+  private transitioning = false;
 
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  500,
-);
+  private readonly raycaster = new THREE.Raycaster();
+  private readonly fireDir = new THREE.Vector3();
+  private readonly fireOrigin = new THREE.Vector3();
+  private readonly clock = new THREE.Clock();
+  private readonly skyTmp = new THREE.Color();
+  private readonly fadeEl: HTMLElement;
+  frames = 0; // advanced each rendered frame (lets tests detect rAF throttling)
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-const key = new THREE.DirectionalLight(0xffffff, 1.1);
-key.position.set(8, 14, 6);
-scene.add(key);
+  constructor() {
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    app!.appendChild(this.renderer.domElement);
+    this.scene.fog = new THREE.Fog(0x000000, 20, 60);
+    this.raycaster.far = 60;
 
-// --- Temporary calibration room (replaced by real worlds in task 5) --------
-const ROOM = 24;
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(ROOM * 2, ROOM * 2),
-  new THREE.MeshStandardMaterial({ color: 0x2a2a33, roughness: 0.95 }),
-);
-floor.rotation.x = -Math.PI / 2;
-scene.add(floor);
+    // Global fill light; worlds add their own accent lighting.
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+    const sun = new THREE.DirectionalLight(0xffffff, 0.7);
+    sun.position.set(6, 14, 8);
+    this.scene.add(sun);
 
-const grid = new THREE.GridHelper(ROOM * 2, 24, 0x4a4a55, 0x33333d);
-scene.add(grid);
+    this.player = new Player(this.camera, this.renderer.domElement);
+    this.scene.add(this.confetti.points); // persists across world swaps
+    this.ui = new UI(uiRoot!);
 
-// --- Grumps (calibration ring; real worlds populate these in task 5) ------
-const shapes = ["box", "sphere", "cone", "cylinder"] as const;
-const grumps: Grump[] = [];
-for (let i = 0; i < 12; i++) {
-  const a = (i / 12) * Math.PI * 2;
-  const r = 13;
-  const pos = new THREE.Vector3(Math.cos(a) * r, 1.4, Math.sin(a) * r);
-  const grump = new Grump({
-    position: pos,
-    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-    shape: shapes[i % shapes.length],
-    size: 1.8,
-    faceYaw: Math.atan2(-pos.x, -pos.z), // face the center/player
-    label: "Grump",
-  });
-  grumps.push(grump);
-  scene.add(grump.group);
-}
+    // Crosshair.
+    const crosshair = document.createElement("div");
+    crosshair.style.cssText = `position:absolute; left:50%; top:50%; width:6px; height:6px;
+      transform:translate(-50%,-50%); border-radius:50%; pointer-events:none;
+      background:${cssHex(PALETTE.pink)}; box-shadow:0 0 8px ${cssHex(PALETTE.pink)};`;
+    uiRoot!.appendChild(crosshair);
 
-// --- Player ----------------------------------------------------------------
-const player = new Player(camera, renderer.domElement);
-player.spawn(0, 0, ROOM - 1);
-player.active = true;
+    // Transition fade overlay.
+    this.fadeEl = document.createElement("div");
+    this.fadeEl.style.cssText = `position:absolute; inset:0; background:#fff; opacity:0;
+      transition:opacity 0.4s ease; pointer-events:none;`;
+    uiRoot!.appendChild(this.fadeEl);
 
-// --- Confetti cannon -------------------------------------------------------
-const confetti = new ConfettiSystem();
-scene.add(confetti.points);
+    // Click-to-lock and fire.
+    this.renderer.domElement.addEventListener("mousedown", () => {
+      if (this.player.locked) this.fire();
+      else this.player.lock();
+    });
 
-const ui = new UI(uiRoot);
+    window.addEventListener("resize", () => this.onResize());
 
-const _fireDir = new THREE.Vector3();
-const _fireOrigin = new THREE.Vector3();
-const raycaster = new THREE.Raycaster();
-raycaster.far = 60;
-const FIESTA_TOTAL = () => grumps.length;
-let cheeredCount = 0;
+    this.loadWorld(0);
+    this.player.active = true;
+    this.animate();
+  }
 
-function syncMeter(): void {
-  ui.setFiesta(FIESTA_TOTAL() === 0 ? 0 : cheeredCount / FIESTA_TOTAL());
-}
+  get total(): number {
+    return this.world.grumps.length;
+  }
+  get fiesta(): number {
+    return this.total === 0 ? 0 : this.cheered / this.total;
+  }
 
-function fire(): void {
-  camera.getWorldDirection(_fireDir);
-  _fireOrigin.copy(camera.position).addScaledVector(_fireDir, 0.6);
-  _fireOrigin.y -= 0.25; // muzzle sits a touch below the eyeline
-  confetti.burst(_fireOrigin, _fireDir, 220);
+  loadWorld(i: number): void {
+    if (this.world) {
+      this.scene.remove(this.world.root);
+      this.world.dispose();
+    }
+    this.index = i;
+    this.world = WORLD_BUILDERS[i]();
+    this.scene.add(this.world.root);
+    this.cheered = 0;
 
-  // Raycast from screen center; cheer the nearest un-cheered grump in range.
-  raycaster.set(camera.position, _fireDir);
-  const bodies = grumps.filter((g) => !g.cheered).map((g) => g.body);
-  const hits = raycaster.intersectObjects(bodies, false);
-  if (hits.length > 0) {
-    const grump = hits[0].object.userData.grump as Grump | undefined;
-    if (grump && grump.cheer()) {
-      cheeredCount++;
-      syncMeter();
-      // celebratory pop right at the grump
-      confetti.burst(grump.center.clone().setY(grump.center.y + 0.5), new THREE.Vector3(0, 1, 0), 90);
+    this.scene.background = this.world.skyGrey.clone();
+    const fog = this.scene.fog as THREE.Fog;
+    fog.color.copy(this.world.skyGrey);
+    fog.near = this.world.fogNear;
+    fog.far = this.world.fogFar;
+
+    this.player.spawn(this.world.spawn.x, this.world.spawn.z, this.world.bounds);
+    this.ui.setWorld(this.world.name, this.world.objective);
+    this.ui.setFiesta(0);
+  }
+
+  fire(): void {
+    this.camera.getWorldDirection(this.fireDir);
+    this.fireOrigin.copy(this.camera.position).addScaledVector(this.fireDir, 0.6);
+    this.fireOrigin.y -= 0.25;
+    this.confetti.burst(this.fireOrigin, this.fireDir, 200);
+
+    this.raycaster.set(this.camera.position, this.fireDir);
+    const bodies = this.world.grumps.filter((g) => !g.cheered).map((g) => g.body);
+    const hits = this.raycaster.intersectObjects(bodies, false);
+    if (hits.length > 0) {
+      const grump = hits[0].object.userData.grump as Grump | undefined;
+      if (grump && grump.cheer()) {
+        this.cheered++;
+        this.ui.setFiesta(this.fiesta);
+        this.confetti.burst(grump.center.clone().setY(grump.center.y + 0.6), UP, 90);
+        if (this.cheered >= this.total) this.onWorldComplete();
+      }
     }
   }
+
+  private onWorldComplete(): void {
+    if (this.world.portal) {
+      this.world.portal.activate();
+      this.ui.setObjective("FIESTA FULL — find the glowing portal! ✨");
+    } else {
+      // Final world: boss/win arrives in task 6.
+      this.ui.setObjective("The rooftop is alive. (Boss arrives in task 6.)");
+    }
+  }
+
+  private enterPortal(): void {
+    if (this.transitioning) return;
+    this.transitioning = true;
+    this.confetti.burst(this.camera.position.clone(), UP, 160);
+    this.fadeEl.style.opacity = "1";
+    window.setTimeout(() => {
+      const next = Math.min(this.index + 1, WORLD_BUILDERS.length - 1);
+      this.loadWorld(next);
+      this.fadeEl.style.opacity = "0";
+      this.transitioning = false;
+    }, 420);
+  }
+
+  private onResize(): void {
+    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  /** Public so tests can drive the proximity/traversal logic deterministically. */
+  travelThroughPortal(): void {
+    this.enterPortal();
+  }
+
+  private animate = (): void => {
+    this.frames++;
+    const dt = Math.min(this.clock.getDelta(), 0.05);
+    this.player.update(dt);
+    this.confetti.update(dt);
+    for (const g of this.world.grumps) g.update(dt);
+    this.world.update?.(dt, this.fiesta);
+
+    // Ambiance: lerp sky + fog from grey toward vibrant as the meter fills.
+    this.skyTmp.copy(this.world.skyGrey).lerp(this.world.skyVibrant, this.fiesta);
+    (this.scene.background as THREE.Color).copy(this.skyTmp);
+    (this.scene.fog as THREE.Fog).color.copy(this.skyTmp);
+
+    if (this.world.portal) {
+      this.world.portal.update(dt);
+      if (!this.transitioning && this.world.portal.isPlayerInside(this.camera.position.x, this.camera.position.z)) {
+        this.enterPortal();
+      }
+    }
+
+    this.renderer.render(this.scene, this.camera);
+    requestAnimationFrame(this.animate);
+  };
 }
-renderer.domElement.addEventListener("mousedown", () => {
-  if (player.locked) fire();
-});
-syncMeter();
 
-// Crosshair (a confetti-pink reticle).
-const crosshair = document.createElement("div");
-crosshair.style.cssText = `
-  position:absolute; left:50%; top:50%; width:18px; height:18px;
-  transform:translate(-50%,-50%); pointer-events:none;`;
-crosshair.innerHTML = `
-  <div style="position:absolute; left:50%; top:50%; width:4px; height:4px; transform:translate(-50%,-50%);
-       border-radius:50%; background:${cssHex(PALETTE.pink)}; box-shadow:0 0 6px ${cssHex(PALETTE.pink)}"></div>`;
-uiRoot.appendChild(crosshair);
-
-// --- Minimal click-to-lock + instruction overlay (full UI in task 7) -------
-const instructions = document.createElement("div");
-instructions.className = "clickable";
-instructions.style.cssText = `
-  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  flex-direction:column; gap:10px; text-align:center; background:rgba(8,8,12,0.55);
-  font-size:20px; letter-spacing:0.5px; cursor:pointer;`;
-instructions.innerHTML = `
-  <div style="font-size:30px; font-weight:bold; color:${cssHex(PALETTE.pink)}">ANIMATED FIESTA</div>
-  <div>Click to look around · <b>WASD</b> to move</div>
-  <div style="opacity:0.6; font-size:14px">(calibration room — task 2.0)</div>`;
-uiRoot.appendChild(instructions);
-
-instructions.addEventListener("click", () => player.lock());
-player.controls.addEventListener("lock", () => (instructions.style.display = "none"));
-player.controls.addEventListener("unlock", () => (instructions.style.display = "flex"));
+const UP = new THREE.Vector3(0, 1, 0);
 
 function cssHex(n: number): string {
   return "#" + n.toString(16).padStart(6, "0");
 }
 
-// --- Resize ----------------------------------------------------------------
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+const game = new Game();
 
-// --- Loop ------------------------------------------------------------------
-const clock = new THREE.Clock();
-function animate() {
-  const dt = Math.min(clock.getDelta(), 0.05);
-  player.update(dt);
-  confetti.update(dt);
-  for (const g of grumps) g.update(dt);
-  renderer.render(scene, camera);
-  requestAnimationFrame(animate);
-}
-animate();
-
-// --- Debug hook for automated validation -----------------------------------
+// --- Debug hooks for automated validation ----------------------------------
 (window as unknown as { __fiesta: unknown }).__fiesta = {
-  state: GameState.Playing,
-  player,
-  camera,
-  confetti,
-  fire,
-  grumps,
+  game,
+  get worldIndex() {
+    return game.index;
+  },
+  get worldName() {
+    return game.world.name;
+  },
   get cheered() {
-    return cheeredCount;
+    return game.cheered;
   },
   get total() {
-    return grumps.length;
+    return game.total;
   },
-  // aim the camera at grump i, then fire (test-only)
-  aimAndFire(i: number) {
-    const g = grumps[i];
-    camera.position.set(g.center.x, g.center.y + 4, g.center.z + 6);
-    camera.lookAt(g.center);
-    fire();
-    const mat = g.body.material as THREE.MeshStandardMaterial;
-    return { cheered: g.cheered, color: mat.color.getHexString() };
+  get portalActive() {
+    return game.world.portal?.active ?? null;
   },
-  // step the confetti sim forward without the rAF loop (test-only)
-  stepConfetti(seconds: number, dt = 0.05) {
-    const steps = Math.ceil(seconds / dt);
-    for (let i = 0; i < steps; i++) confetti.update(dt);
-    return confetti.activeCount;
+  // cheer every grump in the current world (test-only)
+  completeWorld() {
+    for (const g of game.world.grumps) {
+      if (!g.cheered && g.cheer()) {
+        game.cheered++;
+      }
+    }
+    (game as unknown as { onWorldComplete(): void }).onWorldComplete();
+    game.ui.setFiesta(game.fiesta);
+    for (let s = 0; s < 12; s++) for (const g of game.world.grumps) g.update(0.05);
+    return { name: game.world.name, cheered: game.cheered, total: game.total, portalActive: game.world.portal?.active ?? null };
   },
-  // advance grump animations (color/bounce) without the rAF loop (test-only)
-  stepGrumps(seconds: number, dt = 0.05) {
-    const steps = Math.ceil(seconds / dt);
-    for (let s = 0; s < steps; s++) for (const g of grumps) g.update(dt);
+  get frames() {
+    return game.frames;
   },
-  // step the player N frames with the given keys held (test-only movement)
-  testStep(keys: string[], frames = 30, dt = 0.05) {
-    player.testMode = true;
-    const codeFor: Record<string, string> = { w: "KeyW", a: "KeyA", s: "KeyS", d: "KeyD" };
-    for (const k of keys) window.dispatchEvent(new KeyboardEvent("keydown", { code: codeFor[k] ?? k }));
-    for (let i = 0; i < frames; i++) player.update(dt);
-    for (const k of keys) window.dispatchEvent(new KeyboardEvent("keyup", { code: codeFor[k] ?? k }));
-    player.testMode = false;
-    return { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+  // Test the portal entry test geometrically (independent of the rAF loop).
+  portalContains(px: number, pz: number) {
+    const p = game.world.portal;
+    return p ? p.isPlayerInside(px, pz) : null;
+  },
+  // Drive the real traversal (teleport into portal + trigger transition).
+  enterPortal() {
+    const p = game.world.portal;
+    if (!p) return { error: "no portal in this world" };
+    game.camera.position.set(p.group.position.x, 1.7, p.group.position.z);
+    game.travelThroughPortal();
+    return { teleportedInto: game.world.name };
   },
 };
 

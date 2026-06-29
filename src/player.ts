@@ -55,10 +55,11 @@ export class Player {
     this.controls.unlock();
   }
 
-  /** Place the player at a spawn position (x,z) at eye height, facing -Z. */
+  /** Place the player at (x,z) at eye height, looking toward the arena center. */
   spawn(x: number, z: number, bounds = this.bounds): void {
     this.bounds = bounds;
     this.camera.position.set(x, this.eyeHeight, z);
+    this.camera.lookAt(0, this.eyeHeight, 0);
     this.velocity.set(0, 0, 0);
   }
 

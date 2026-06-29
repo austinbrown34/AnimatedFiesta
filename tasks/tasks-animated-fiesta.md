@@ -130,14 +130,28 @@ source, Makefile, or tests by reading the repo root.)
   | 6 | Meter reaches 100% when all cheered | PASS | 12/12 cheered → fill width 100%, label "100%" |
   | 7 | No app console errors | PASS | only unrelated Chrome-extension error |
 
-- [ ] **5.0 Portals & world manager (3 worlds)**                       <- Serves: AC-5, AC-6
-  - [ ] 5.1 `src/portal.ts`: disco-ball portal, inactive (dim/still) vs active (glowing/spinning) states; activates at meter 100%
-  - [ ] 5.2 World manager in `src/main.ts`: build/teardown scene graph; proximity check enters active portal → next world
-  - [ ] 5.3 `src/worlds/office.ts`, `cavern.ts`, `rooftop.ts` (+ `types.ts`): 3 visually distinct worlds with grumps + portal
+- [x] **5.0 Portals & world manager (3 worlds)**                       <- Serves: AC-5, AC-6
+  - [x] 5.1 `src/portal.ts`: disco-ball portal, inactive (dim/still) vs active (glowing/spinning) states; activates at meter 100%
+  - [x] 5.2 World manager in `src/main.ts`: build/teardown scene graph; proximity check enters active portal → next world
+  - [x] 5.3 `src/worlds/office.ts`, `cavern.ts`, `rooftop.ts` (+ `types.ts`): 3 visually distinct worlds with grumps + portal
   - **Validates when:**
     - `make check` exits 0
     - Chrome: portal is visibly inactive until meter 100%, then visibly active (screenshots)
     - Walking into inactive portal does nothing; walking into active portal swaps to next world (screenshots of all 3 worlds, visually distinct)
+
+  **Validation Results (5.0):**
+
+  | # | Check | Result | Notes |
+  |---|-------|--------|-------|
+  | 1 | `make check` exits 0 | PASS | exit 0 |
+  | 2 | Portal inactive until meter 100% | PASS | inactive before complete; `activate()` on 100% → active=true (screenshot shows glowing cyan ring) |
+  | 3 | Entry geometry correct | PASS | `portalContains`: inactive-inside=false, active-inside=true, active-outside=false |
+  | 4 | Active portal → next world | PASS | Office→Cavern→Rooftop via traversal (worldIndex 0→1→2) |
+  | 5 | 3 distinct worlds in order | PASS | Beige Office (9 grumps), Frozen Conga Cavern (10), Auditor's Rooftop (7); screenshots clearly distinct |
+  | 6 | Final world has no portal | PASS | rooftop `portal === null` |
+  | 7 | No app console errors | PASS | only unrelated Chrome-extension error |
+
+  > Env note: live proximity traversal runs in the rAF loop; the automation tab is `hidden` (rAF throttled), so traversal was driven through the same `enterPortal` code path while the entry geometry was unit-verified separately. The "walk into the portal during normal play" wiring is logged on the human-verify ledger (low risk).
 
 - [ ] **6.0 Boss finale & win/restart**                                <- Serves: AC-7
   - [ ] 6.1 `src/boss.ts`: Grey Auditor figure with joy/resistance bar that fills as confetti hits him
