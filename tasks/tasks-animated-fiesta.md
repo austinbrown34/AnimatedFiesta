@@ -108,15 +108,27 @@ source, Makefile, or tests by reading the repo root.)
   | 6 | No app/shader console errors | PASS | only unrelated Chrome-extension error present |
   | 7 | Crosshair renders | PASS | centered pink reticle visible |
 
-- [ ] **4.0 Grump + joy restoration + Fiesta Meter**                   <- Serves: AC-4, AC-5
-  - [ ] 4.1 `src/grump.ts`: object with desaturated + target color; `cheer()` tweens color, bounce/pop, emits confetti, marks cheered
-  - [ ] 4.2 Fire raycast from camera; nearest un-cheered grump within range gets cheered on click
-  - [ ] 4.3 Fiesta Meter state + HUD bar in `src/ui.ts`; increments once per grump (no double-count); reaches 100% when all cheered
+- [x] **4.0 Grump + joy restoration + Fiesta Meter**                   <- Serves: AC-4, AC-5
+  - [x] 4.1 `src/grump.ts`: object with desaturated + target color; `cheer()` tweens color, bounce/pop, emits confetti, marks cheered
+  - [x] 4.2 Fire raycast from camera; nearest un-cheered grump within range gets cheered on click
+  - [x] 4.3 Fiesta Meter state + HUD bar in `src/ui.ts`; increments once per grump (no double-count); reaches 100% when all cheered
   - **Validates when:**
     - `make check` exits 0
     - Chrome: aiming at a grump + firing recolors it + bounces (screenshot before/after)
     - Debug: meter increments on first cheer of a grump, does NOT change on re-firing same grump
     - Meter reaches 100% after cheering all grumps in a test world
+
+  **Validation Results (4.0):**
+
+  | # | Check | Result | Notes |
+  |---|-------|--------|-------|
+  | 1 | `make check` exits 0 | PASS | exit 0 |
+  | 2 | Aim+fire recolors grump | PASS | grey `8a8a90` → `fe40a5` (≈ target pink `ff3ea5`) |
+  | 3 | Bounce + face flip | PASS | squash-stretch bounce; frown→grin (screenshot shows colored grumps with faces) |
+  | 4 | Meter increments once per grump | PASS | count 0→1 on first cheer |
+  | 5 | Re-firing same grump does NOT re-count | PASS | count stays 1 after second fire at same grump |
+  | 6 | Meter reaches 100% when all cheered | PASS | 12/12 cheered → fill width 100%, label "100%" |
+  | 7 | No app console errors | PASS | only unrelated Chrome-extension error |
 
 - [ ] **5.0 Portals & world manager (3 worlds)**                       <- Serves: AC-5, AC-6
   - [ ] 5.1 `src/portal.ts`: disco-ball portal, inactive (dim/still) vs active (glowing/spinning) states; activates at meter 100%

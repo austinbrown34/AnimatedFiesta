@@ -6,8 +6,9 @@ without per-task pause; stop and report on any failure.)
 
 ## Current Position
 - Phase: 3 (Validation-First Implementation)
-- Active task: 4.0 (Grump + joy restoration + Fiesta Meter)
-- Completed parent tasks: 1.0 (scaffold), 2.0 (controller), 3.0 (confetti cannon)
+- Active task: 5.0 (Portals & world manager — 3 worlds)
+- Completed parent tasks: 1.0 (scaffold), 2.0 (controller), 3.0 (confetti), 4.0 (grumps + meter)
+- Core loop proven: aim → fire → cheer grump (recolor/bounce/face-flip) → meter → 100%.
 - Branch: `ab/f/animated-fiesta`
 - Dev server: `npm run dev` on **:5191** (background id bs6p5bonj)
 

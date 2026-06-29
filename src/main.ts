@@ -1,7 +1,9 @@
 import * as THREE from "three";
 import { Player } from "./player";
 import { ConfettiSystem } from "./confetti";
-import { GameState, PALETTE } from "./state";
+import { Grump } from "./grump";
+import { UI } from "./ui";
+import { CONFETTI_COLORS, GameState, PALETTE } from "./state";
 
 // ---------------------------------------------------------------------------
 // Animated Fiesta — main (task 2.0)
@@ -46,17 +48,23 @@ scene.add(floor);
 const grid = new THREE.GridHelper(ROOM * 2, 24, 0x4a4a55, 0x33333d);
 scene.add(grid);
 
-// Colored pillars so motion/parallax is obvious.
-const pillarColors = [PALETTE.pink, PALETTE.cyan, PALETTE.yellow, PALETTE.lime, PALETTE.orange, PALETTE.purple];
+// --- Grumps (calibration ring; real worlds populate these in task 5) ------
+const shapes = ["box", "sphere", "cone", "cylinder"] as const;
+const grumps: Grump[] = [];
 for (let i = 0; i < 12; i++) {
   const a = (i / 12) * Math.PI * 2;
-  const r = 14;
-  const pillar = new THREE.Mesh(
-    new THREE.BoxGeometry(1.5, 4, 1.5),
-    new THREE.MeshStandardMaterial({ color: pillarColors[i % pillarColors.length], roughness: 0.5 }),
-  );
-  pillar.position.set(Math.cos(a) * r, 2, Math.sin(a) * r);
-  scene.add(pillar);
+  const r = 13;
+  const pos = new THREE.Vector3(Math.cos(a) * r, 1.4, Math.sin(a) * r);
+  const grump = new Grump({
+    position: pos,
+    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    shape: shapes[i % shapes.length],
+    size: 1.8,
+    faceYaw: Math.atan2(-pos.x, -pos.z), // face the center/player
+    label: "Grump",
+  });
+  grumps.push(grump);
+  scene.add(grump.group);
 }
 
 // --- Player ----------------------------------------------------------------
@@ -68,17 +76,43 @@ player.active = true;
 const confetti = new ConfettiSystem();
 scene.add(confetti.points);
 
+const ui = new UI(uiRoot);
+
 const _fireDir = new THREE.Vector3();
 const _fireOrigin = new THREE.Vector3();
+const raycaster = new THREE.Raycaster();
+raycaster.far = 60;
+const FIESTA_TOTAL = () => grumps.length;
+let cheeredCount = 0;
+
+function syncMeter(): void {
+  ui.setFiesta(FIESTA_TOTAL() === 0 ? 0 : cheeredCount / FIESTA_TOTAL());
+}
+
 function fire(): void {
   camera.getWorldDirection(_fireDir);
   _fireOrigin.copy(camera.position).addScaledVector(_fireDir, 0.6);
   _fireOrigin.y -= 0.25; // muzzle sits a touch below the eyeline
   confetti.burst(_fireOrigin, _fireDir, 220);
+
+  // Raycast from screen center; cheer the nearest un-cheered grump in range.
+  raycaster.set(camera.position, _fireDir);
+  const bodies = grumps.filter((g) => !g.cheered).map((g) => g.body);
+  const hits = raycaster.intersectObjects(bodies, false);
+  if (hits.length > 0) {
+    const grump = hits[0].object.userData.grump as Grump | undefined;
+    if (grump && grump.cheer()) {
+      cheeredCount++;
+      syncMeter();
+      // celebratory pop right at the grump
+      confetti.burst(grump.center.clone().setY(grump.center.y + 0.5), new THREE.Vector3(0, 1, 0), 90);
+    }
+  }
 }
 renderer.domElement.addEventListener("mousedown", () => {
   if (player.locked) fire();
 });
+syncMeter();
 
 // Crosshair (a confetti-pink reticle).
 const crosshair = document.createElement("div");
@@ -124,6 +158,7 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   player.update(dt);
   confetti.update(dt);
+  for (const g of grumps) g.update(dt);
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }
@@ -136,11 +171,32 @@ animate();
   camera,
   confetti,
   fire,
+  grumps,
+  get cheered() {
+    return cheeredCount;
+  },
+  get total() {
+    return grumps.length;
+  },
+  // aim the camera at grump i, then fire (test-only)
+  aimAndFire(i: number) {
+    const g = grumps[i];
+    camera.position.set(g.center.x, g.center.y + 4, g.center.z + 6);
+    camera.lookAt(g.center);
+    fire();
+    const mat = g.body.material as THREE.MeshStandardMaterial;
+    return { cheered: g.cheered, color: mat.color.getHexString() };
+  },
   // step the confetti sim forward without the rAF loop (test-only)
   stepConfetti(seconds: number, dt = 0.05) {
     const steps = Math.ceil(seconds / dt);
     for (let i = 0; i < steps; i++) confetti.update(dt);
     return confetti.activeCount;
+  },
+  // advance grump animations (color/bounce) without the rAF loop (test-only)
+  stepGrumps(seconds: number, dt = 0.05) {
+    const steps = Math.ceil(seconds / dt);
+    for (let s = 0; s < steps; s++) for (const g of grumps) g.update(dt);
   },
   // step the player N frames with the given keys held (test-only movement)
   testStep(keys: string[], frames = 30, dt = 0.05) {
