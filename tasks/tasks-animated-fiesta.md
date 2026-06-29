@@ -87,14 +87,26 @@ source, Makefile, or tests by reading the repo root.)
   | 6 | Instructions overlay renders | PASS | screenshot shows title + controls |
   | 7 | Click engages pointer-lock | **HUMAN-VERIFY** | Pointer Lock API needs a real user gesture; synthetic automation click does not satisfy it. Wiring confirmed in code (click→`lock()`; lock event hides overlay). Needs one real click in-browser. |
 
-- [ ] **3.0 Confetti cannon & particle system**                       <- Serves: AC-3
-  - [ ] 3.1 `src/confetti.ts`: pooled particle system (BufferGeometry positions+colors), gravity, lifetime, recycle
-  - [ ] 3.2 Crosshair element; mouse-click fires a burst of ≥150 multicolored particles from the view
-  - [ ] 3.3 Cap pool size; dead particles recycled (no unbounded growth)
+- [x] **3.0 Confetti cannon & particle system**                       <- Serves: AC-3
+  - [x] 3.1 `src/confetti.ts`: pooled particle system (BufferGeometry positions+colors), gravity, lifetime, recycle
+  - [x] 3.2 Crosshair element; mouse-click fires a burst of ≥150 multicolored particles from the view
+  - [x] 3.3 Cap pool size; dead particles recycled (no unbounded growth)
   - **Validates when:**
     - `make check` exits 0
     - Chrome: clicking spawns visible confetti (screenshot before/after)
     - Debug readout: active particle count rises on fire, returns toward baseline after lifetimes (no monotonic leak across 10 fires)
+
+  **Validation Results (3.0):**
+
+  | # | Check | Result | Notes |
+  |---|-------|--------|-------|
+  | 1 | `make check` exits 0 | PASS | exit 0 |
+  | 2 | Fire spawns ≥150 particles | PASS | 220 per burst (baseline 0 → 220) |
+  | 3 | Multicolored + gravity | PASS | all 6 palette colors; arcs/falls under gravity (screenshot) |
+  | 4 | Pool capped, no growth | PASS | 12×220 requested → caps at pool max 2400 (extras dropped) |
+  | 5 | Recycles, no leak | PASS | drains to 0 after 5 s sim; pool reusable (220 again) |
+  | 6 | No app/shader console errors | PASS | only unrelated Chrome-extension error present |
+  | 7 | Crosshair renders | PASS | centered pink reticle visible |
 
 - [ ] **4.0 Grump + joy restoration + Fiesta Meter**                   <- Serves: AC-4, AC-5
   - [ ] 4.1 `src/grump.ts`: object with desaturated + target color; `cheer()` tweens color, bounce/pop, emits confetti, marks cheered

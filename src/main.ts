@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { Player } from "./player";
+import { ConfettiSystem } from "./confetti";
 import { GameState, PALETTE } from "./state";
 
 // ---------------------------------------------------------------------------
@@ -63,6 +64,32 @@ const player = new Player(camera, renderer.domElement);
 player.spawn(0, 0, ROOM - 1);
 player.active = true;
 
+// --- Confetti cannon -------------------------------------------------------
+const confetti = new ConfettiSystem();
+scene.add(confetti.points);
+
+const _fireDir = new THREE.Vector3();
+const _fireOrigin = new THREE.Vector3();
+function fire(): void {
+  camera.getWorldDirection(_fireDir);
+  _fireOrigin.copy(camera.position).addScaledVector(_fireDir, 0.6);
+  _fireOrigin.y -= 0.25; // muzzle sits a touch below the eyeline
+  confetti.burst(_fireOrigin, _fireDir, 220);
+}
+renderer.domElement.addEventListener("mousedown", () => {
+  if (player.locked) fire();
+});
+
+// Crosshair (a confetti-pink reticle).
+const crosshair = document.createElement("div");
+crosshair.style.cssText = `
+  position:absolute; left:50%; top:50%; width:18px; height:18px;
+  transform:translate(-50%,-50%); pointer-events:none;`;
+crosshair.innerHTML = `
+  <div style="position:absolute; left:50%; top:50%; width:4px; height:4px; transform:translate(-50%,-50%);
+       border-radius:50%; background:${cssHex(PALETTE.pink)}; box-shadow:0 0 6px ${cssHex(PALETTE.pink)}"></div>`;
+uiRoot.appendChild(crosshair);
+
 // --- Minimal click-to-lock + instruction overlay (full UI in task 7) -------
 const instructions = document.createElement("div");
 instructions.className = "clickable";
@@ -96,6 +123,7 @@ const clock = new THREE.Clock();
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   player.update(dt);
+  confetti.update(dt);
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }
@@ -106,6 +134,14 @@ animate();
   state: GameState.Playing,
   player,
   camera,
+  confetti,
+  fire,
+  // step the confetti sim forward without the rAF loop (test-only)
+  stepConfetti(seconds: number, dt = 0.05) {
+    const steps = Math.ceil(seconds / dt);
+    for (let i = 0; i < steps; i++) confetti.update(dt);
+    return confetti.activeCount;
+  },
   // step the player N frames with the given keys held (test-only movement)
   testStep(keys: string[], frames = 30, dt = 0.05) {
     player.testMode = true;
