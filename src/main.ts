@@ -3,7 +3,7 @@ import { Player } from "./player";
 import { ConfettiSystem } from "./confetti";
 import { Grump } from "./grump";
 import { UI } from "./ui";
-import { GameState, PALETTE } from "./state";
+import { GameState } from "./state";
 import { World } from "./worlds/types";
 import { buildOffice } from "./worlds/office";
 import { buildCavern } from "./worlds/cavern";
@@ -38,6 +38,7 @@ class Game {
   private readonly raycaster = new THREE.Raycaster();
   private readonly fireDir = new THREE.Vector3();
   private readonly fireOrigin = new THREE.Vector3();
+  private readonly aimDir = new THREE.Vector3();
   private readonly clock = new THREE.Clock();
   private readonly skyTmp = new THREE.Color();
   private readonly fadeEl: HTMLElement;
@@ -60,21 +61,15 @@ class Game {
     this.scene.add(this.confetti.points); // persists across world swaps
     this.ui = new UI(uiRoot!);
 
-    // Crosshair.
-    const crosshair = document.createElement("div");
-    crosshair.style.cssText = `position:absolute; left:50%; top:50%; width:6px; height:6px;
-      transform:translate(-50%,-50%); border-radius:50%; pointer-events:none;
-      background:${cssHex(PALETTE.pink)}; box-shadow:0 0 8px ${cssHex(PALETTE.pink)};`;
-    uiRoot!.appendChild(crosshair);
-
     // Transition fade overlay.
     this.fadeEl = document.createElement("div");
     this.fadeEl.style.cssText = `position:absolute; inset:0; background:#fff; opacity:0;
       transition:opacity 0.4s ease; pointer-events:none;`;
     uiRoot!.appendChild(this.fadeEl);
 
-    // Click-to-lock and fire.
+    // Click-to-lock and fire (only while actually playing).
     this.renderer.domElement.addEventListener("mousedown", () => {
+      if (this.state !== GameState.Playing) return;
       if (this.player.locked) this.fire();
       else this.player.lock();
     });
@@ -82,8 +77,16 @@ class Game {
     window.addEventListener("resize", () => this.onResize());
 
     this.loadWorld(0);
-    this.player.active = true;
+    this.state = GameState.Intro;
+    this.ui.showIntro(() => this.start());
     this.animate();
+  }
+
+  start(): void {
+    this.ui.hideIntro();
+    this.state = GameState.Playing;
+    this.player.active = true;
+    this.player.lock();
   }
 
   get total(): number {
@@ -201,6 +204,30 @@ class Game {
     this.enterPortal();
   }
 
+  /** Highlight the crosshair when aiming at a cheerable grump or the boss. */
+  private updateAim(): void {
+    if (this.state !== GameState.Playing) {
+      this.ui.setAim(null);
+      return;
+    }
+    this.camera.getWorldDirection(this.aimDir);
+    this.raycaster.set(this.camera.position, this.aimDir);
+
+    const boss = this.world.boss;
+    if (boss && boss.active && !boss.defeated && this.raycaster.intersectObjects(boss.hitTargets, false).length) {
+      this.ui.setAim("The Grey Auditor");
+      return;
+    }
+    const bodies = this.world.grumps.filter((g) => !g.cheered).map((g) => g.body);
+    const hit = this.raycaster.intersectObjects(bodies, false);
+    if (hit.length) {
+      const g = hit[0].object.userData.grump as Grump | undefined;
+      this.ui.setAim(g?.label ?? "Grump");
+      return;
+    }
+    this.ui.setAim(null);
+  }
+
   private animate = (): void => {
     this.frames++;
     const dt = Math.min(this.clock.getDelta(), 0.05);
@@ -209,6 +236,8 @@ class Game {
     for (const g of this.world.grumps) g.update(dt);
     this.world.boss?.update(dt);
     this.world.update?.(dt, this.fiesta);
+
+    this.updateAim();
 
     // Keep the party raining during the victory screen.
     if (this.state === GameState.Win && this.frames % 40 === 0) this.confetti.rain(160);
@@ -231,10 +260,6 @@ class Game {
 }
 
 const UP = new THREE.Vector3(0, 1, 0);
-
-function cssHex(n: number): string {
-  return "#" + n.toString(16).padStart(6, "0");
-}
 
 const game = new Game();
 
@@ -273,6 +298,17 @@ const game = new Game();
   },
   get state() {
     return game.state;
+  },
+  // start the game from the intro without a real pointer-lock gesture (test-only)
+  begin() {
+    game.state = GameState.Playing;
+    game.player.active = true;
+    game.ui.hideIntro();
+    return game.state;
+  },
+  // run one aim-feedback pass (rAF is throttled in hidden tabs) (test-only)
+  tickAim() {
+    (game as unknown as { updateAim(): void }).updateAim();
   },
   get bossActive() {
     return game.world.boss?.active ?? null;

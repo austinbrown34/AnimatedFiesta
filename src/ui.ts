@@ -15,6 +15,9 @@ export class UI {
   private readonly bossFill: HTMLElement;
   private readonly winScreen: HTMLElement;
   private readonly restartBtn: HTMLButtonElement;
+  private readonly introScreen: HTMLElement;
+  private readonly crosshairDot: HTMLElement;
+  private readonly aimLabel: HTMLElement;
 
   constructor(private readonly root: HTMLElement) {
     const meter = document.createElement("div");
@@ -91,6 +94,75 @@ export class UI {
         🎉 Throw Another Fiesta</button>`;
     this.root.appendChild(this.winScreen);
     this.restartBtn = this.winScreen.querySelector("[data-restart]") as HTMLButtonElement;
+
+    // --- Crosshair + aim label --------------------------------------------
+    this.crosshairDot = document.createElement("div");
+    this.crosshairDot.style.cssText = `position:absolute; left:50%; top:50%; width:8px; height:8px;
+      transform:translate(-50%,-50%); border-radius:50%; pointer-events:none;
+      background:${hex(PALETTE.pink)}; box-shadow:0 0 8px ${hex(PALETTE.pink)};
+      transition:width 0.1s, height 0.1s, background 0.1s;`;
+    this.root.appendChild(this.crosshairDot);
+
+    this.aimLabel = document.createElement("div");
+    this.aimLabel.style.cssText = `position:absolute; left:50%; top:calc(50% + 26px);
+      transform:translateX(-50%); pointer-events:none; font-size:14px; font-weight:bold;
+      color:#fff; text-shadow:0 1px 4px rgba(0,0,0,0.8); opacity:0; white-space:nowrap;
+      transition:opacity 0.1s;`;
+    this.root.appendChild(this.aimLabel);
+
+    // --- Intro screen ------------------------------------------------------
+    this.introScreen = document.createElement("div");
+    this.introScreen.className = "clickable";
+    this.introScreen.style.cssText = `position:absolute; inset:0; display:flex; align-items:center;
+      justify-content:center; flex-direction:column; gap:14px; text-align:center; cursor:pointer;
+      background:radial-gradient(circle at 50% 35%, rgba(30,8,46,0.92), rgba(8,8,12,0.97));`;
+    this.introScreen.innerHTML = `
+      <div style="font-size:18px; letter-spacing:6px; color:${hex(PALETTE.cyan)}">THE LAST PARTY ON EARTH</div>
+      <div style="font-size:58px; font-weight:bold; letter-spacing:1px; color:${hex(PALETTE.pink)};
+           text-shadow:0 0 24px ${hex(PALETTE.purple)}">ANIMATED FIESTA</div>
+      <div style="font-size:18px; max-width:620px; line-height:1.6; margin-top:6px">
+        The <b>Grey Auditor</b> has declared joy <i>fiscally irresponsible</i> and drained the
+        color from the universe. You are the last <b style="color:${hex(PALETTE.yellow)}">Fiesta Director</b>.
+        Your weapon: a confetti cannon. Your mission: cheer everything up.
+      </div>
+      <div style="font-size:15px; opacity:0.85; margin-top:10px; line-height:1.8">
+        <b>WASD</b> move &nbsp;·&nbsp; <b>Mouse</b> look &nbsp;·&nbsp; <b>Click</b> to fire confetti<br>
+        Fill the <b style="color:${hex(PALETTE.lime)}">FIESTA METER</b> to open the portal to the next world
+      </div>
+      <button data-begin style="margin-top:18px; font:inherit; font-size:22px; font-weight:bold;
+        color:#16161c; background:${hex(PALETTE.yellow)}; border:none; border-radius:30px;
+        padding:14px 34px; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,0.45)">
+        ▶ Begin the Fiesta</button>`;
+    this.root.appendChild(this.introScreen);
+  }
+
+  /** Highlight the crosshair + show a label when aiming at something cheerable. */
+  setAim(label: string | null): void {
+    if (label) {
+      this.crosshairDot.style.width = "16px";
+      this.crosshairDot.style.height = "16px";
+      this.crosshairDot.style.background = hex(PALETTE.yellow);
+      this.aimLabel.textContent = label;
+      this.aimLabel.style.opacity = "1";
+    } else {
+      this.crosshairDot.style.width = "8px";
+      this.crosshairDot.style.height = "8px";
+      this.crosshairDot.style.background = hex(PALETTE.pink);
+      this.aimLabel.style.opacity = "0";
+    }
+  }
+
+  showIntro(onBegin: () => void): void {
+    this.introScreen.style.display = "flex";
+    const begin = (e: Event) => {
+      e.stopPropagation();
+      onBegin();
+    };
+    (this.introScreen.querySelector("[data-begin]") as HTMLButtonElement).onclick = begin;
+    this.introScreen.onclick = () => onBegin();
+  }
+  hideIntro(): void {
+    this.introScreen.style.display = "none";
   }
 
   /** frac is 0..1 for the current world. */

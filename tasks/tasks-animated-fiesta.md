@@ -173,14 +173,26 @@ source, Makefile, or tests by reading the repo root.)
   | 5 | Restart → world 1, playable | PASS | restart button → worldIndex 0 "The Beige Office", `state=playing`, meter reset, win hidden |
   | 6 | No app console errors | PASS | only unrelated Chrome-extension error |
 
-- [ ] **7.0 UX shell & tone**                                          <- Serves: AC-8, AC-9
-  - [ ] 7.1 Intro screen: premise (Grey Auditor / last Fiesta Director) + controls; "click to begin"
-  - [ ] 7.2 HUD: current world name + active objective/hint always visible during play
-  - [ ] 7.3 Aim feedback: crosshair changes/highlights when aimed at a cheerable grump; satire copy in ≥1 in-world touch
+- [x] **7.0 UX shell & tone**                                          <- Serves: AC-8, AC-9
+  - [x] 7.1 Intro screen: premise (Grey Auditor / last Fiesta Director) + controls; "click to begin"
+  - [x] 7.2 HUD: current world name + active objective/hint always visible during play
+  - [x] 7.3 Aim feedback: crosshair changes/highlights when aimed at a cheerable grump; satire copy in ≥1 in-world touch
   - **Validates when:**
     - `make check` exits 0
     - Chrome: intro screen shows premise + controls before play (screenshot)
     - During play, world name + objective visible (screenshot); crosshair changes state when aimed at a grump vs not (screenshots)
+
+  **Validation Results (7.0):**
+
+  | # | Check | Result | Notes |
+  |---|-------|--------|-------|
+  | 1 | `make check` exits 0 | PASS | exit 0 |
+  | 2 | Intro shows premise + controls | PASS | full intro screen (Grey Auditor / Fiesta Director + WASD/Mouse/Click) — screenshot |
+  | 3 | Intro hides on begin | PASS | display flex→none; `state=playing` |
+  | 4 | World name + objective always visible | PASS | HUD shows "The Beige Office / Restore joy to 9 grumpy office objects" |
+  | 5 | Crosshair highlights on grump | PASS | dot 8px→16px + yellow; off-target reverts to 8px/pink |
+  | 6 | Aim label shows target name | PASS | label "The 3pm meeting" opacity 1 when aimed (screenshot) |
+  | 7 | Satire copy present | PASS | intro premise, grump labels (e.g. "Printer (out of toner, naturally)", "Traffic cone (invited itself)"), win text, objectives |
 
 - [ ] **8.0 Robustness & polish**                                      <- Serves: AC-10
   - [ ] 8.1 Window-resize handler keeps canvas/camera aspect correct
