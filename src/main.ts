@@ -112,6 +112,10 @@ class Game {
     this.player.spawn(this.world.spawn.x, this.world.spawn.z, this.world.bounds);
     this.ui.setWorld(this.world.name, this.world.objective);
     this.ui.setFiesta(0);
+    this.ui.hideBossBar();
+    if (this.world.boss) {
+      this.world.boss.onDefeated = () => this.win();
+    }
   }
 
   fire(): void {
@@ -121,6 +125,19 @@ class Game {
     this.confetti.burst(this.fireOrigin, this.fireDir, 200);
 
     this.raycaster.set(this.camera.position, this.fireDir);
+
+    // Boss takes priority once active (all grumps are already cheered by then).
+    const boss = this.world.boss;
+    if (boss && boss.active && !boss.defeated) {
+      const bossHits = this.raycaster.intersectObjects(boss.hitTargets, false);
+      if (bossHits.length > 0) {
+        boss.hit(0.05);
+        this.ui.setBossJoy(boss.joy);
+        this.confetti.burst(bossHits[0].point.clone(), UP, 70);
+        return;
+      }
+    }
+
     const bodies = this.world.grumps.filter((g) => !g.cheered).map((g) => g.body);
     const hits = this.raycaster.intersectObjects(bodies, false);
     if (hits.length > 0) {
@@ -138,10 +155,26 @@ class Game {
     if (this.world.portal) {
       this.world.portal.activate();
       this.ui.setObjective("FIESTA FULL — find the glowing portal! ✨");
-    } else {
-      // Final world: boss/win arrives in task 6.
-      this.ui.setObjective("The rooftop is alive. (Boss arrives in task 6.)");
+    } else if (this.world.boss) {
+      this.world.boss.activate();
+      this.ui.showBossBar();
+      this.ui.setObjective("THE GREY AUDITOR APPROACHES — bury him in confetti! 🎊");
     }
+  }
+
+  private win(): void {
+    this.state = GameState.Win;
+    this.confetti.rain(700);
+    this.ui.hideBossBar();
+    this.ui.setObjective("VICTORY! 🎉");
+    this.player.unlock();
+    this.ui.showWin(() => this.restart());
+  }
+
+  private restart(): void {
+    this.ui.hideWin();
+    this.state = GameState.Playing;
+    this.loadWorld(0);
   }
 
   private enterPortal(): void {
@@ -174,7 +207,11 @@ class Game {
     this.player.update(dt);
     this.confetti.update(dt);
     for (const g of this.world.grumps) g.update(dt);
+    this.world.boss?.update(dt);
     this.world.update?.(dt, this.fiesta);
+
+    // Keep the party raining during the victory screen.
+    if (this.state === GameState.Win && this.frames % 40 === 0) this.confetti.rain(160);
 
     // Ambiance: lerp sky + fog from grey toward vibrant as the meter fills.
     this.skyTmp.copy(this.world.skyGrey).lerp(this.world.skyVibrant, this.fiesta);
@@ -233,6 +270,27 @@ const game = new Game();
   },
   get frames() {
     return game.frames;
+  },
+  get state() {
+    return game.state;
+  },
+  get bossActive() {
+    return game.world.boss?.active ?? null;
+  },
+  get bossJoy() {
+    return game.world.boss?.joy ?? null;
+  },
+  // Complete the rooftop, activate the boss, then confetti him to defeat (test-only).
+  defeatBoss() {
+    (game as unknown as { onWorldComplete(): void }).onWorldComplete();
+    const boss = game.world.boss;
+    if (!boss) return { error: "no boss in this world" };
+    let guard = 0;
+    while (!boss.defeated && guard++ < 100) {
+      boss.hit(0.05);
+      game.ui.setBossJoy(boss.joy);
+    }
+    return { defeated: boss.defeated, joy: boss.joy, state: game.state };
   },
   // Test the portal entry test geometrically (independent of the rAF loop).
   portalContains(px: number, pz: number) {

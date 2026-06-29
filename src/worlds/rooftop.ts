@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { Grump } from "../grump";
+import { Boss } from "../boss";
 import { PALETTE } from "../state";
 import { box, faceCenter, floor, World, disposeObject } from "./types";
 
@@ -80,12 +81,17 @@ export function buildRooftop(): World {
   root.add(moon);
   root.add(new THREE.HemisphereLight(0x35406b, 0x101018, 0.5));
 
+  // The Grey Auditor stands behind the DJ booth, dormant until the rooftop sings.
+  const boss = new Boss(new THREE.Vector3(0, 0, -15));
+  root.add(boss.group);
+
   return {
     name: "The Auditor's Rooftop",
     objective: "Cheer the rooftop, then face The Grey Auditor",
     root,
     grumps,
     portal: null, // final world — victory comes from the boss (task 6)
+    boss,
     spawn: new THREE.Vector3(0, 1.7, 15),
     bounds,
     skyGrey: new THREE.Color(0x12121c),

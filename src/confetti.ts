@@ -166,6 +166,37 @@ export class ConfettiSystem {
     this.geometry.attributes.aData.needsUpdate = true;
   }
 
+  /** Celebratory downpour across the arena — used for the win sequence. */
+  rain(count = 600, area = 24, top = 22): void {
+    for (let n = 0; n < count; n++) {
+      const i = this.free.pop();
+      if (i === undefined) break;
+
+      this.vel[i * 3] = (Math.random() - 0.5) * 2;
+      this.vel[i * 3 + 1] = -2 - Math.random() * 3;
+      this.vel[i * 3 + 2] = (Math.random() - 0.5) * 2;
+
+      this.position[i * 3] = (Math.random() - 0.5) * area * 2;
+      this.position[i * 3 + 1] = top + Math.random() * 8;
+      this.position[i * 3 + 2] = (Math.random() - 0.5) * area * 2;
+
+      this.tmp.setHex(CONFETTI_COLORS[(Math.random() * CONFETTI_COLORS.length) | 0]);
+      this.color[i * 3] = this.tmp.r;
+      this.color[i * 3 + 1] = this.tmp.g;
+      this.color[i * 3 + 2] = this.tmp.b;
+
+      this.aData[i * 2] = 10 + Math.random() * 14;
+      this.aData[i * 2 + 1] = 1;
+      this.maxLife[i] = 4 + Math.random() * 3;
+      this.life[i] = this.maxLife[i];
+      this.phase[i] = Math.random() * Math.PI * 2;
+      this.activeCount++;
+    }
+    this.geometry.attributes.position.needsUpdate = true;
+    this.geometry.attributes.color.needsUpdate = true;
+    this.geometry.attributes.aData.needsUpdate = true;
+  }
+
   update(dt: number): void {
     if (this.activeCount === 0) return;
     const drag = Math.pow(DRAG, dt);

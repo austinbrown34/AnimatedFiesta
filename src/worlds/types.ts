@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { Grump } from "../grump";
 import { Portal } from "../portal";
+import { Boss } from "../boss";
 
 // A self-contained level. The Game manager adds `root` to the scene, applies
 // sky/fog, spawns the player, and lerps the ambiance from grey toward vibrant
@@ -12,6 +13,8 @@ export interface World {
   readonly grumps: Grump[];
   /** Portal to the next world; null on the final (boss) world. */
   readonly portal: Portal | null;
+  /** The final-world boss; null elsewhere. Activated when all grumps cheered. */
+  readonly boss?: Boss | null;
   readonly spawn: THREE.Vector3;
   readonly bounds: number;
   /** Sky color when drained (fiesta 0) and when fully restored (fiesta 1). */

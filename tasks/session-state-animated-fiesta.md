@@ -6,8 +6,9 @@ without per-task pause; stop and report on any failure.)
 
 ## Current Position
 - Phase: 3 (Validation-First Implementation)
-- Active task: 6.0 (Boss finale & win/restart)
-- Completed parent tasks: 1.0–5.0 (scaffold, controller, confetti, grumps+meter, portals+3 worlds)
+- Active task: 7.0 (UX shell & tone)
+- Completed parent tasks: 1.0–6.0 (scaffold, controller, confetti, grumps+meter, portals+3 worlds, boss+win/restart)
+- Full arc playable: 3 worlds → boss → win → restart. Boss in src/boss.ts; win/boss UI in ui.ts.
 - Core loop proven end-to-end across all 3 worlds via portals.
 - main.ts is now a `Game` class (world manager). Worlds in src/worlds/{office,cavern,rooftop}.ts via `World` interface (types.ts). Portal in portal.ts.
 - Rooftop (world 3) has `portal: null` — victory comes from the boss (task 6).

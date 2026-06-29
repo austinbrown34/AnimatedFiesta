@@ -11,6 +11,10 @@ export class UI {
   private readonly meterPct: HTMLElement;
   private readonly worldName: HTMLElement;
   private readonly worldObjective: HTMLElement;
+  private readonly bossBar: HTMLElement;
+  private readonly bossFill: HTMLElement;
+  private readonly winScreen: HTMLElement;
+  private readonly restartBtn: HTMLButtonElement;
 
   constructor(private readonly root: HTMLElement) {
     const meter = document.createElement("div");
@@ -47,6 +51,46 @@ export class UI {
     this.root.appendChild(banner);
     this.worldName = banner.querySelector("[data-world]") as HTMLElement;
     this.worldObjective = banner.querySelector("[data-objective]") as HTMLElement;
+
+    // --- Boss bar (hidden until the Auditor appears) -----------------------
+    this.bossBar = document.createElement("div");
+    this.bossBar.style.cssText = `
+      position:absolute; bottom:34px; left:50%; transform:translateX(-50%);
+      width:min(520px, 80vw); text-align:center; font-weight:bold; display:none;
+      text-shadow:0 1px 3px rgba(0,0,0,0.7);`;
+    this.bossBar.innerHTML = `
+      <div style="font-size:14px; letter-spacing:2px; margin-bottom:5px; color:${hex(PALETTE.pink)}">
+        THE GREY AUDITOR — JOY RESISTANCE
+      </div>
+      <div style="height:18px; border-radius:10px; background:rgba(255,255,255,0.12);
+           border:1px solid rgba(255,255,255,0.3); overflow:hidden">
+        <div data-boss-fill style="height:100%; width:0%;
+             background:linear-gradient(90deg, ${hex(PALETTE.purple)}, ${hex(PALETTE.pink)},
+             ${hex(PALETTE.yellow)}); transition:width 0.15s ease"></div>
+      </div>`;
+    this.root.appendChild(this.bossBar);
+    this.bossFill = this.bossBar.querySelector("[data-boss-fill]") as HTMLElement;
+
+    // --- Win screen (hidden) ----------------------------------------------
+    this.winScreen = document.createElement("div");
+    this.winScreen.className = "clickable";
+    this.winScreen.style.cssText = `
+      position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+      flex-direction:column; gap:18px; text-align:center;
+      background:radial-gradient(circle at 50% 40%, rgba(40,10,50,0.82), rgba(8,8,12,0.92));`;
+    this.winScreen.innerHTML = `
+      <div style="font-size:52px; font-weight:bold; color:${hex(PALETTE.yellow)};
+           text-shadow:0 0 20px ${hex(PALETTE.pink)}">YOU SAVED THE FIESTA</div>
+      <div style="font-size:20px; max-width:560px; line-height:1.5">
+        The Grey Auditor is doing the worm. Joy has been deemed
+        <i>fiscally responsible after all.</i> The universe is colorful again.
+      </div>
+      <button data-restart style="margin-top:8px; font:inherit; font-size:20px; font-weight:bold;
+        color:#16161c; background:${hex(PALETTE.yellow)}; border:none; border-radius:30px;
+        padding:14px 30px; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,0.4)">
+        🎉 Throw Another Fiesta</button>`;
+    this.root.appendChild(this.winScreen);
+    this.restartBtn = this.winScreen.querySelector("[data-restart]") as HTMLButtonElement;
   }
 
   /** frac is 0..1 for the current world. */
@@ -64,5 +108,23 @@ export class UI {
   /** When the portal opens, nudge the objective text. */
   setObjective(text: string): void {
     this.worldObjective.textContent = text;
+  }
+
+  showBossBar(): void {
+    this.bossBar.style.display = "block";
+  }
+  hideBossBar(): void {
+    this.bossBar.style.display = "none";
+  }
+  setBossJoy(frac: number): void {
+    this.bossFill.style.width = `${Math.round(frac * 100)}%`;
+  }
+
+  showWin(onRestart: () => void): void {
+    this.winScreen.style.display = "flex";
+    this.restartBtn.onclick = onRestart;
+  }
+  hideWin(): void {
+    this.winScreen.style.display = "none";
   }
 }

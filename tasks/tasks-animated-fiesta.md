@@ -153,14 +153,25 @@ source, Makefile, or tests by reading the repo root.)
 
   > Env note: live proximity traversal runs in the rAF loop; the automation tab is `hidden` (rAF throttled), so traversal was driven through the same `enterPortal` code path while the entry geometry was unit-verified separately. The "walk into the portal during normal play" wiring is logged on the human-verify ledger (low risk).
 
-- [ ] **6.0 Boss finale & win/restart**                                <- Serves: AC-7
-  - [ ] 6.1 `src/boss.ts`: Grey Auditor figure with joy/resistance bar that fills as confetti hits him
-  - [ ] 6.2 At 100% joy: win sequence (confetti celebration) + transition to win screen
-  - [ ] 6.3 Win screen in `src/ui.ts` with restart → returns to intro/world 1
+- [x] **6.0 Boss finale & win/restart**                                <- Serves: AC-7
+  - [x] 6.1 `src/boss.ts`: Grey Auditor figure with joy/resistance bar that fills as confetti hits him
+  - [x] 6.2 At 100% joy: win sequence (confetti celebration) + transition to win screen
+  - [x] 6.3 Win screen in `src/ui.ts` with restart → returns to intro/world 1
   - **Validates when:**
     - `make check` exits 0
     - Chrome: firing at Auditor raises his joy bar; at 100% the win screen appears (screenshots)
     - Restart button returns to intro and a new run is playable
+
+  **Validation Results (6.0):**
+
+  | # | Check | Result | Notes |
+  |---|-------|--------|-------|
+  | 1 | `make check` exits 0 | PASS | exit 0 |
+  | 2 | Auditor renders, dormant until rooftop cheered | PASS | `bossActive=false` at load; activates on world-complete (screenshot: grey Auditor + clipboard) |
+  | 3 | Confetti hits raise joy bar | PASS | `hit()` raises `joy`; bar fills; reached `joy=1` |
+  | 4 | 100% joy → win sequence + screen | PASS | `state="win"`, win screen visible, confetti rain, boss colorizes/dances (screenshot) |
+  | 5 | Restart → world 1, playable | PASS | restart button → worldIndex 0 "The Beige Office", `state=playing`, meter reset, win hidden |
+  | 6 | No app console errors | PASS | only unrelated Chrome-extension error |
 
 - [ ] **7.0 UX shell & tone**                                          <- Serves: AC-8, AC-9
   - [ ] 7.1 Intro screen: premise (Grey Auditor / last Fiesta Director) + controls; "click to begin"
