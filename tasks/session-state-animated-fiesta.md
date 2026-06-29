@@ -6,9 +6,9 @@ without per-task pause; stop and report on any failure.)
 
 ## Current Position
 - Phase: 3 (Validation-First Implementation)
-- Active task: 8.0 (Robustness & polish — final task)
-- Completed parent tasks: 1.0–7.0 (scaffold, controller, confetti, grumps+meter, portals+3 worlds, boss+win/restart, UX shell+tone)
-- Game now starts at an intro screen (GameState.Intro). Aim feedback (crosshair + label) in updateAim(). Satire copy throughout.
+- Active task: NONE — all 8 parent tasks complete. Awaiting Phase 4 human verification.
+- Completed parent tasks: 1.0–8.0 (ALL).
+- Game now starts at an intro screen (GameState.Intro). Aim feedback (crosshair + label) in updateAim(). Satire copy throughout. Audio in src/audio.ts.
 - Core loop proven end-to-end across all 3 worlds via portals.
 - main.ts is now a `Game` class (world manager). Worlds in src/worlds/{office,cavern,rooftop}.ts via `World` interface (types.ts). Portal in portal.ts.
 - Rooftop (world 3) has `portal: null` — victory comes from the boss (task 6).
@@ -21,6 +21,7 @@ without per-task pause; stop and report on any failure.)
 ## Human-Verify Ledger (env-limited checks for Phase 4 human gate)
 - [ ] (2.0) Click canvas engages pointer-lock + mouse-look — Pointer Lock API needs real user gesture; confirmed wired in code. Verify with one real click in-browser.
 - [ ] (5.0) Walking into an active portal during normal (foreground) play triggers traversal — logic unit-verified + traversal code path exercised; rAF was throttled in the hidden automation tab. Low risk.
+- [ ] (8.0) Drag-resizing the browser window keeps the canvas undistorted — invariant verified + handler wired; OS-forced resize couldn't change innerWidth in automation. Low risk.
 
 ## Known Minor Polish (for task 7/8)
 - Grump faces use a fixed yaw toward arena center; from some angles you see their back. Consider billboarding the face toward the camera (task 7/8).

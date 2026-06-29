@@ -3,6 +3,7 @@ import { Player } from "./player";
 import { ConfettiSystem } from "./confetti";
 import { Grump } from "./grump";
 import { UI } from "./ui";
+import { Audio } from "./audio";
 import { GameState } from "./state";
 import { World } from "./worlds/types";
 import { buildOffice } from "./worlds/office";
@@ -28,6 +29,7 @@ class Game {
   readonly player: Player;
   readonly confetti = new ConfettiSystem();
   readonly ui: UI;
+  readonly audio = new Audio();
 
   state = GameState.Playing;
   world!: World;
@@ -86,6 +88,7 @@ class Game {
     this.ui.hideIntro();
     this.state = GameState.Playing;
     this.player.active = true;
+    this.audio.resume();
     this.player.lock();
   }
 
@@ -126,6 +129,7 @@ class Game {
     this.fireOrigin.copy(this.camera.position).addScaledVector(this.fireDir, 0.6);
     this.fireOrigin.y -= 0.25;
     this.confetti.burst(this.fireOrigin, this.fireDir, 200);
+    this.audio.fire();
 
     this.raycaster.set(this.camera.position, this.fireDir);
 
@@ -149,6 +153,7 @@ class Game {
         this.cheered++;
         this.ui.setFiesta(this.fiesta);
         this.confetti.burst(grump.center.clone().setY(grump.center.y + 0.6), UP, 90);
+        this.audio.cheer();
         if (this.cheered >= this.total) this.onWorldComplete();
       }
     }
@@ -157,6 +162,7 @@ class Game {
   private onWorldComplete(): void {
     if (this.world.portal) {
       this.world.portal.activate();
+      this.audio.portal();
       this.ui.setObjective("FIESTA FULL — find the glowing portal! ✨");
     } else if (this.world.boss) {
       this.world.boss.activate();
@@ -168,6 +174,7 @@ class Game {
   private win(): void {
     this.state = GameState.Win;
     this.confetti.rain(700);
+    this.audio.win();
     this.ui.hideBossBar();
     this.ui.setObjective("VICTORY! 🎉");
     this.player.unlock();
@@ -183,6 +190,7 @@ class Game {
   private enterPortal(): void {
     if (this.transitioning) return;
     this.transitioning = true;
+    this.audio.portal();
     this.confetti.burst(this.camera.position.clone(), UP, 160);
     this.fadeEl.style.opacity = "1";
     window.setTimeout(() => {

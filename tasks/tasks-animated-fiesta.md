@@ -194,11 +194,22 @@ source, Makefile, or tests by reading the repo root.)
   | 6 | Aim label shows target name | PASS | label "The 3pm meeting" opacity 1 when aimed (screenshot) |
   | 7 | Satire copy present | PASS | intro premise, grump labels (e.g. "Printer (out of toner, naturally)", "Traffic cone (invited itself)"), win text, objectives |
 
-- [ ] **8.0 Robustness & polish**                                      <- Serves: AC-10
-  - [ ] 8.1 Window-resize handler keeps canvas/camera aspect correct
-  - [ ] 8.2 ~2-minute Chrome session: assert no uncaught console errors, stays interactive
-  - [ ] 8.3 Perf pass (instancing/pool caps where needed); optional audio polish (`src/audio.ts`, non-blocking)
+- [x] **8.0 Robustness & polish**                                      <- Serves: AC-10
+  - [x] 8.1 Window-resize handler keeps canvas/camera aspect correct
+  - [x] 8.2 ~2-minute Chrome session: assert no uncaught console errors, stays interactive
+  - [x] 8.3 Perf pass (instancing/pool caps where needed); optional audio polish (`src/audio.ts`, non-blocking)
   - **Validates when:**
     - `make build` exits 0
     - Chrome: resize window → canvas resizes without distortion (screenshots at 2 sizes)
     - ~2-min session scan: console-error count == 0; page still responds to input at end
+
+  **Validation Results (8.0):**
+
+  | # | Check | Result | Notes |
+  |---|-------|--------|-------|
+  | 1 | `make build` exits 0 | PASS | tsc + vite build OK; `dist/` bundle 517 KB |
+  | 2 | Resize keeps canvas/aspect correct | PASS | invariant verified: `camera.aspect == innerW/innerH`, canvas client size == viewport; handler wired on `resize`. (Forced OS-resize didn't change `innerWidth` in this env — real drag-resize on human-verify ledger, low risk.) |
+  | 3 | Long session: 0 uncaught errors | PASS | ~130 s simulated session (heavy bursts across all worlds + boss + win rain + restart): 0 errors thrown |
+  | 4 | Particle pool bounded (no leak) | PASS | maxActiveCount 2367 ≤ pool max 2400 across the whole session |
+  | 5 | Stays interactive | PASS | post-session: `state=playing`, world reset, `fire()` works, hooks responsive |
+  | 6 | Audio polish (non-blocking) | PASS | `src/audio.ts` guarded Web Audio (fire/cheer/portal/win); resumes on Begin gesture; no-ops if unavailable |
