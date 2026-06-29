@@ -5,7 +5,10 @@ export default defineConfig({
   base: "./",
   server: {
     host: true,
-    port: 5173,
+    // Avoid 5173 — a stale service worker from another local project can
+    // squat that origin and intercept requests. Use a dedicated port.
+    port: 5191,
+    strictPort: true,
   },
   build: {
     target: "es2020",

@@ -6,10 +6,16 @@ without per-task pause; stop and report on any failure.)
 
 ## Current Position
 - Phase: 3 (Validation-First Implementation)
-- Active task: 2.0 (First-person player controller)
-- Completed parent tasks: 1.0 (scaffold + Makefile + Vite/TS/Three pipeline verified in Chrome)
+- Active task: 3.0 (Confetti cannon & particle system)
+- Completed parent tasks: 1.0 (scaffold), 2.0 (first-person controller)
 - Branch: `ab/f/animated-fiesta`
-- Dev server: `npm run dev` on :5173 (background id b3cv14jql)
+- Dev server: `npm run dev` on **:5191** (background id bs6p5bonj)
+
+## Environment Gotchas
+- Port 5173 is squatted by a stale service worker from another local project ("DomainDriver") that intercepts requests. We use **port 5191** (`strictPort`). If a page shows the wrong app, unregister SWs for the origin.
+
+## Human-Verify Ledger (env-limited checks for Phase 4 human gate)
+- [ ] (2.0) Click canvas engages pointer-lock + mouse-look — Pointer Lock API needs real user gesture; confirmed wired in code. Verify with one real click in-browser.
 
 ## Human Decisions (expensive to lose)
 - Stack: **Vite + Three.js + TypeScript**, plain ES modules.

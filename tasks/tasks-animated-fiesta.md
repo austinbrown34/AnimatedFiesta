@@ -65,15 +65,27 @@ source, Makefile, or tests by reading the repo root.)
   | 4 | Chrome loads, canvas present | PASS | canvas 2560×1323, `#ui-root` present, title correct |
   | 5 | No uncaught **app** console errors | PASS | only error is from an unrelated Chrome extension (`chrome-extension://…/content.js`), not app code |
 
-- [ ] **2.0 First-person player controller**                          <- Serves: AC-2
-  - [ ] 2.1 `src/player.ts`: PointerLockControls, click-to-lock, WASD velocity integration
-  - [ ] 2.2 Mouse-look via controls; ground-plane movement; head-bob on move
-  - [ ] 2.3 World bounds clamp + fixed eye height (no fall-through)
+- [x] **2.0 First-person player controller**                          <- Serves: AC-2
+  - [x] 2.1 `src/player.ts`: PointerLockControls, click-to-lock, WASD velocity integration
+  - [x] 2.2 Mouse-look via controls; ground-plane movement; head-bob on move
+  - [x] 2.3 World bounds clamp + fixed eye height (no fall-through)
   - **Validates when:**
     - `make check` exits 0
     - Chrome: clicking canvas locks pointer (screenshot shows lock / instructions hidden)
     - Pressing W changes camera Z position (verified via injected debug readout / console)
     - Camera Y stays at eye height; X/Z clamped within bounds (no NaN, no escape)
+
+  **Validation Results (2.0):**
+
+  | # | Check | Result | Notes |
+  |---|-------|--------|-------|
+  | 1 | `make check` exits 0 | PASS | exit 0 |
+  | 2 | W moves forward (camera −Z) | PASS | z 0 → −11.2 over held W |
+  | 3 | D moves right (camera +X) | PASS | x 0 → +11.2 over held D |
+  | 4 | Eye height stays ~1.7 (head-bob) | PASS | y ≈ 1.74 (bob oscillation), settles to 1.7 |
+  | 5 | Bounds clamp; no NaN; no escape | PASS | within ±24, all finite |
+  | 6 | Instructions overlay renders | PASS | screenshot shows title + controls |
+  | 7 | Click engages pointer-lock | **HUMAN-VERIFY** | Pointer Lock API needs a real user gesture; synthetic automation click does not satisfy it. Wiring confirmed in code (click→`lock()`; lock event hides overlay). Needs one real click in-browser. |
 
 - [ ] **3.0 Confetti cannon & particle system**                       <- Serves: AC-3
   - [ ] 3.1 `src/confetti.ts`: pooled particle system (BufferGeometry positions+colors), gravity, lifetime, recycle
